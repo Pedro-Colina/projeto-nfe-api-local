@@ -45,13 +45,13 @@ def consulta_por_documento(documento: str):
         return resultado
     return {"message": "Nenhuma nota encontrada para esse CPF/CNPJ"}
 
-@app.post("/importar", tags=["Importar XML"])
-def importar_notas():
-    """
-    Importa os XMLs da pasta para o banco de dados.
-    """
-    msg = importar_xmls.importar_xmls()
-    return {"mensagem": msg}
+# @app.post("/importar", tags=["Importar XML"])
+# def importar_notas():
+#     """
+#     Importa os XMLs da pasta para o banco de dados.
+#     """
+#     msg = importar_xmls.importar_xmls()
+#     return {"mensagem": msg}
 
 def dividir_em_lotes(lista, tamanho_lote):
     """Divide uma lista em blocos de tamanho fixo"""
@@ -59,7 +59,7 @@ def dividir_em_lotes(lista, tamanho_lote):
         yield lista[i:i + tamanho_lote]
 
 
-@app.post("/notas/upload-lote")
+@app.post("/notas/upload-lote", tags=["Importar XMLs"])
 async def upload_lote(files: List[UploadFile] = File(...)):
     """
     Recebe XMLs em massa, divide em blocos menores e insere no SQLite.
