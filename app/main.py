@@ -15,9 +15,7 @@ import tempfile, os, aiofiles, traceback
 app = FastAPI(
     title="API de Consulta de NF-e",
     description="Consulta a NF-e mais recente com base no CPF ou CNPJ do cliente",
-    version="1.0",
-    docs_url=None,      
-    redoc_url="/docs"
+    version="1.0"
 )
 
 def importar_xml():
