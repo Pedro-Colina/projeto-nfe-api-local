@@ -16,6 +16,8 @@ app = FastAPI(
     title="API de Consulta de NF-e",
     description="Consulta a NF-e mais recente com base no CPF ou CNPJ do cliente",
     version="1.0"
+    docs_url=None,       # Desabilita Swagger
+    redoc_url="/docs",   # Coloca Redoc no lugar do /docs
 )
 
 def importar_xml():
