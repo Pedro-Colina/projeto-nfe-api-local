@@ -1,18 +1,24 @@
+# app/utils.py
 import xml.etree.ElementTree as ET
 import os
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from .config import XML_FOLDER
 from .mensagens import get_mensagem
+from app.database import inserir_varias_notas, busca_duplicidade
+from fastapi import UploadFile, File
+from dotenv import load_dotenv
+load_dotenv()
+import asyncio
+import aiofiles
+import tempfile
 
 noinf = "Não informado"
 
 def local_name(tag: str) -> str:
-    """Retorna o nome local da tag removendo namespace se existir."""
     return tag.split("}")[-1] if "}" in tag else tag
 
 def find_tag(root: ET.Element, path: str) -> Optional[ET.Element]:
-    """Procura por tags ignorando namespaces."""
     parts = path.split("/")
     current = root
     for part in parts:
@@ -27,12 +33,11 @@ def find_tag(root: ET.Element, path: str) -> Optional[ET.Element]:
     return current
 
 def get_access_key(root: ET.Element) -> Optional[str]:
-    """Extrai a chave de acesso da NF-e do atributo Id de infNFe."""
     infnfe = find_tag(root, "infNFe")
     if infnfe is not None:
         chave = infnfe.attrib.get("Id", "")
         if chave.startswith("NFe"):
-            chave = chave[3:]  # remove o prefixo "NFe"
+            chave = chave[3:]
         return chave if chave else None
     return noinf
 
@@ -46,12 +51,11 @@ def get_client_document(root: ET.Element) -> Optional[str]:
     return None
 
 def get_emission_date(root: ET.Element) -> Optional[str]:
-    data_tag = find_tag(root, "ide/dhEmi")  # corrigido (sem nfe:)
+    data_tag = find_tag(root, "ide/dhEmi")
     if data_tag is not None and data_tag.text:
         try:
             return datetime.fromisoformat(data_tag.text).isoformat()
         except Exception:
-            # fallback: tenta cortar só data
             return data_tag.text[:10]
     return None
 
@@ -59,7 +63,7 @@ def text_in_tag(tag: str, root) -> str:
     found_tag = find_tag(root, tag)
     return found_tag.text if found_tag is not None else noinf
 
-
+# processa_xml continua para uso local (arquivo no disco)
 def processa_xml(filepath: str, filename: str, documento_target: Optional[str] = None):
     try:
         tree = ET.parse(filepath)
@@ -92,20 +96,89 @@ def processa_xml(filepath: str, filename: str, documento_target: Optional[str] =
         print(f"Erro ao processar {filename}: {e}")
         return None
 
-def buscar_nota_mais_recente_por_documento(documento: str):
-    notas = []
-    for filename in os.listdir(XML_FOLDER):
-        if filename.endswith(".xml"):
-            filepath = os.path.join(XML_FOLDER, filename)
-            nota = processa_xml(filepath, filename, documento)
-            if nota:
-                notas.append(nota)
+def dividir_em_lotes(lista, tamanho_lote):
+    for i in range(0, len(lista), tamanho_lote):
+        yield lista[i:i + tamanho_lote]
 
-    if not notas:
+# --- helper: parse XML a partir de bytes (para evitar escrever temp file se preferir) ---
+def parse_xml_from_bytes(contents: bytes, filename: str):
+    try:
+        root = ET.fromstring(contents)
+        # reusar lógica do processa_xml a partir do root
+        doc_cliente = get_client_document(root)
+        nome_cliente = text_in_tag("dest/xNome", root)
+        transportadora = text_in_tag("transp/transporta/xNome", root)
+        n_nf = text_in_tag("ide/nNF", root)
+        cnpj = text_in_tag("emit/CNPJ", root)
+        chave_acess = get_access_key(root)
+        data_emissao = get_emission_date(root)
+        mensagem = get_mensagem(transportadora, n_nf, doc_cliente, cnpj)
+
+        nota = {
+            "arquivo": filename,
+            "documento": doc_cliente or noinf,
+            "cliente": nome_cliente,
+            "transportadora": transportadora,
+            "mensagem": mensagem,
+            "data_emissao": data_emissao or noinf,
+            "chave_acesso": chave_acess
+        }
+        return nota
+    except Exception as e:
+        print(f"Erro ao processar {filename}: {e}")
+        # retorna None em caso de erro
         return None
 
-    notas_validas = [n for n in notas if n["data_emissao"] != noinf]
-    if notas_validas:
-        return max(notas_validas, key=lambda x: x["data_emissao"])
-    else:
-        return notas[-1]
+async def process_file(file: UploadFile, salvos_set: set, erros: list, duplicados: list, notas_inserir: list):
+    try:
+        contents = await file.read()
+
+        # limita concorrência de parsing
+        nota_dict = await asyncio.to_thread(parse_xml_from_bytes, contents, file.filename)
+
+        if not isinstance(nota_dict, dict):
+            erros.append({"arquivo": file.filename, "erro": "XML inválido"})
+            return
+
+        chave = nota_dict.get("chave_acesso")
+        if not chave:
+            erros.append({"arquivo": file.filename, "erro": "Sem chave de acesso"})
+            return
+
+        if chave in salvos_set:
+            duplicados.append(chave)
+            return
+
+        notas_inserir.append(nota_dict)
+        salvos_set.add(chave)
+
+    except Exception as e:
+        erros.append({"arquivo": file.filename if hasattr(file, "filename") else "unknown", "erro": str(e), "local": "process_file"})
+
+async def upload_lote(files: List[UploadFile] = File(...)):
+    BATCH_SIZE = int(os.getenv("BATCH_SIZE", 100))  # default 100
+    erros, duplicados, notas_sucesso = [], [], []
+
+    salvos = await busca_duplicidade()
+    salvos_set = set(salvos)
+
+    for batch in dividir_em_lotes(files, BATCH_SIZE):
+        # processa todos os arquivos do lote em paralelo
+        notas_inserir = []
+        tasks = [process_file(file, salvos_set, erros, duplicados, notas_inserir) for file in batch]
+        await asyncio.gather(*tasks)
+
+        if notas_inserir:
+            try:
+                await inserir_varias_notas(notas_inserir)  # agora async
+                notas_sucesso.extend(notas_inserir)
+            except Exception as e:
+                erros.append({"arquivo": "lote", "erro": str(e), "local": "db insert"})
+
+    return {
+        "sucesso": len(notas_sucesso),
+        "duplicados": len(duplicados),
+        "falhas": len(erros),
+        "notas_inserir": notas_sucesso[:5],
+        "erros": erros
+    }

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API de Notas Fiscais</title>
+    <link rel="stylesheet" href="/static/style.css?v=1.1">
+</head>
+<body>
+    <header>
+        <h1>API de Notas Fiscais</h1>
+        <p>Consulte e cadastre suas NF-e de forma simples e rapida.</p>
+    </header>
+
+    <div class="container">
+        <section>
+            <h2>Consulta de Nota</h2>
+            <form id="consulta-form">
+                <input id="input-consulta" type="text" name="documento" placeholder="Digite o documento (CPF/CNPJ)">
+                <button type="submit">Consultar</button>
+            </form>
+            <div id="consulta-response"></div>
+        </section>
+    
+        <section>
+            <h2>Upload de XMLs</h2>
+            <div id="invalid-archiv"></div>
+            <form id="upload-form" enctype="multipart/form-data">
+                <input type="file" id="file-input" name="files" multiple hidden>
+                <button type="button" id="select-files">Selecionar arquivos</button>
+                <ul id="file-list"></ul>
+                <button type="submit">Enviar</button>
+            </form>
+            <div id="response"></div>
+        </section>
+    </div>
+
+
+
+    <script src="/static/index.js"></script>
+</body>
+</html>
