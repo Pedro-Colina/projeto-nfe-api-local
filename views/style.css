@@ -164,6 +164,23 @@ button:hover {
   margin: 0;
 }
 
+#separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  color: #a0a0a0;
+}
+
+#separator::before,
+#separator::after {
+  content: "";
+  flex-grow: 1;
+  height: 1px;
+  background-color: #d0d0d0;
+  margin: 0 15px;
+}
+
 @media screen and (max-width: 800px) {
   .container {
     flex-direction: column;
