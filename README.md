@@ -56,8 +56,8 @@ Inclui um **front-end simples em HTML/CSS/JS** para upload dos arquivos.
 ### 1. Clone o repositório
 
 ```bash
-git clone https://github.com/seu-usuario/seu-repo.git
-cd seu-repo
+git clone https://github.com/Pedro-Colina/projeto-nfe-api-local.git
+cd projeto-nfe-api-local
 ```
 
 ### 2. Crie e ative um ambiente virtual
