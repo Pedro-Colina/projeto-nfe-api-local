@@ -157,7 +157,8 @@ Consulta a nota **mais recente** de um documento.
 
 ## 🖼️ Screenshots
 
-> _(Adicione aqui prints do front-end em uso)_
+<img width="1880" height="938" alt="image" src="https://github.com/user-attachments/assets/0980fe25-4fcf-4130-948b-e2c5e70ba30e" />
+
 
 ---
 
