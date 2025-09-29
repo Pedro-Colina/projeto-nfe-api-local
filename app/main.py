@@ -4,22 +4,31 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from typing import List
 import aiofiles
+import traceback
+from contextlib import asynccontextmanager
 
 from app.utils import upload_lote
 from app.config import XML_FOLDER
 from app.database import buscar_nota_mais_recente, criar_tabela
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        # cria a tabela antes de aceitar requisições
+        await criar_tabela()
+        print("DB: tabela verificada/criada com sucesso.")
+        yield
+    except Exception:
+        print("Erro ao inicializar o DB:")
+        traceback.print_exc()
+        raise
 
 app = FastAPI(
     title="API de Consulta de NF-e",
     description="Consulta a NF-e mais recente com base no CPF ou CNPJ do cliente",
-    version="1.0"
+    version="1.0",
+    lifespan=lifespan
 )
-
-async def lifespan():
-    # executa ao iniciar
-    await criar_tabela()
-    yield
 
 app.mount("/static", StaticFiles(directory="views"), name="static")
 

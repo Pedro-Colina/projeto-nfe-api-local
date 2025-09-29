@@ -73,11 +73,17 @@ async def inserir_varias_notas(notas: list[dict], tentativas=3):
 
 
 async def busca_duplicidade():
-    async with aiosqlite.connect(DB_URL, timeout=5) as db:
-        cur = await db.execute("SELECT chave_acesso FROM notas")
-        rows = await cur.fetchall()
-        await cur.close()
-        return [r[0] for r in rows]
+    try:
+        async with aiosqlite.connect(DB_URL, timeout=5) as db:
+            cur = await db.execute("SELECT chave_acesso FROM notas")
+            rows = await cur.fetchall()
+            await cur.close()
+            return [r[0] for r in rows]
+    except aiosqlite.OperationalError as e:
+        if "no such table" in str(e).lower():
+            await criar_tabela()
+            return []
+        raise
 
 async def buscar_nota_mais_recente(documento: str):
     async with aiosqlite.connect(DB_URL, timeout=5) as db:
