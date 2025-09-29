@@ -1,5 +1,6 @@
 # app/database.py
 import aiosqlite
+import asyncio
 from pathlib import Path
 
 DB_PATH = Path(__file__).resolve().parent / "notas.db"
@@ -18,36 +19,58 @@ async def criar_tabela():
                 transportadora TEXT,
                 mensagem TEXT,
                 data_emissao TEXT,
-                chave_acesso TEXT UNIQUE
+                chave_acesso TEXT UNIQUE,
+                numero_nota TEXT,
+                valor REAL,
+                cnpj_emitente TEXT,
+                nome_emitente TEXT
             )
         """)
         await db.commit()
 
-async def inserir_varias_notas(notas: list[dict]):
+import asyncio
+import aiosqlite
+
+async def inserir_varias_notas(notas: list[dict], tentativas=3):
     if not notas:
         return
-    async with aiosqlite.connect(DB_URL, timeout=30) as db:
-        await db.execute("PRAGMA journal_mode=WAL;")
-        await db.execute("PRAGMA synchronous=NORMAL;")
-        sql = """
-            INSERT OR IGNORE INTO notas
-            (arquivo, documento, cliente, transportadora, mensagem, data_emissao, chave_acesso)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """
-        data = [
-            (
-                nota["arquivo"],
-                nota["documento"],
-                nota["cliente"],
-                nota["transportadora"],
-                nota["mensagem"],
-                nota["data_emissao"],
-                nota["chave_acesso"]
-            )
-            for nota in notas
-        ]
-        await db.executemany(sql, data)
-        await db.commit()
+    sql = """
+        INSERT OR IGNORE INTO notas
+        (arquivo, documento, cliente, transportadora, mensagem, data_emissao, chave_acesso,
+        numero_nota, valor, cnpj_emitente, nome_emitente)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    data = [
+        (
+            nota["arquivo"],
+            nota["documento"],
+            nota["cliente"],
+            nota["transportadora"],
+            nota["mensagem"],
+            nota["data_emissao"],
+            nota["chave_acesso"],
+            nota.get("numero_nota"),
+            nota.get("valor"),
+            nota.get("cnpj_emitente"),
+            nota.get("nome_emitente")
+        )
+        for nota in notas
+    ]
+
+    for tentativa in range(tentativas):
+        try:
+            async with aiosqlite.connect(DB_URL, timeout=5) as db:
+                await db.execute("PRAGMA journal_mode=WAL;")
+                await db.execute("PRAGMA synchronous=NORMAL;")
+                await db.executemany(sql, data)
+                await db.commit()
+            return  # sucesso
+        except aiosqlite.OperationalError as e:
+            if "locked" in str(e).lower() and tentativa < tentativas - 1:
+                await asyncio.sleep(0.2 * (tentativa + 1))  # backoff exponencial
+            else:
+                raise
+
 
 async def busca_duplicidade():
     async with aiosqlite.connect(DB_URL, timeout=5) as db:
@@ -59,7 +82,9 @@ async def busca_duplicidade():
 async def buscar_nota_mais_recente(documento: str):
     async with aiosqlite.connect(DB_URL, timeout=5) as db:
         cur = await db.execute("""
-            SELECT arquivo, documento, cliente, transportadora, mensagem, data_emissao, chave_acesso
+            SELECT arquivo, documento, cliente, transportadora, mensagem,
+                   data_emissao, chave_acesso, numero_nota, valor,
+                   cnpj_emitente, nome_emitente
             FROM notas
             WHERE documento = ?
             ORDER BY datetime(data_emissao) DESC
@@ -76,5 +101,9 @@ async def buscar_nota_mais_recente(documento: str):
                 "mensagem": row[4],
                 "data_emissao": row[5],
                 "chave_acesso": row[6],
+                "numero_nota": row[7],
+                "valor": row[8],
+                "cnpj_emitente": row[9],
+                "nome_emitente": row[10],
             }
     return None

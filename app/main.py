@@ -3,10 +3,9 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from typing import List
-import os
 import aiofiles
 
-from app.utils import processa_xml, upload_lote
+from app.utils import upload_lote
 from app.config import XML_FOLDER
 from app.database import buscar_nota_mais_recente, criar_tabela
 

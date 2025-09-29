@@ -108,8 +108,10 @@ def parse_xml_from_bytes(contents: bytes, filename: str):
         doc_cliente = get_client_document(root)
         nome_cliente = text_in_tag("dest/xNome", root)
         transportadora = text_in_tag("transp/transporta/xNome", root)
+        valor_nf = text_in_tag("total/ICMSTot/vNF", root)
         n_nf = text_in_tag("ide/nNF", root)
         cnpj = text_in_tag("emit/CNPJ", root)
+        nome_empresa = text_in_tag("emit/xNome", root)
         chave_acess = get_access_key(root)
         data_emissao = get_emission_date(root)
         mensagem = get_mensagem(transportadora, n_nf, doc_cliente, cnpj)
@@ -121,7 +123,11 @@ def parse_xml_from_bytes(contents: bytes, filename: str):
             "transportadora": transportadora,
             "mensagem": mensagem,
             "data_emissao": data_emissao or noinf,
-            "chave_acesso": chave_acess
+            "chave_acesso": chave_acess,
+            "numero_nota": n_nf or noinf,
+            "valor": float(valor_nf) if valor_nf.replace('.', '', 1).isdigit() else 0.0,
+            "cnpj_emitente": cnpj or noinf,
+            "nome_emitente": nome_empresa or noinf
         }
         return nota
     except Exception as e:

@@ -15,5 +15,5 @@ def get_mensagem(transportadora: str, num_nf, doc_cliente, doc_loja) -> str:
 
     return MENSAGENS_TRANSPORTADORAS.get(
         transportadora.split(' ')[0],
-        "Sua entrega será realizada pela transportadora informada na nota fiscal."
+        "Não foi possível identificar a transportadora. Entraremos em contato para informar os detalhes da entrega."
     ).replace("@NF@", num_nf).replace("@DOCLOJA@", doc_loja).replace("@DOCCLIENTE@", doc_cliente)
