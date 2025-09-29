@@ -1,77 +1,167 @@
-# 📦 API de Consulta de NF-e
+# 📦 API de Processamento de Notas Fiscais (XML)
 
-Essa API permite consultar a **nota fiscal mais recente** de um cliente com base no CPF ou CNPJ e retorna:
-- Nome do cliente
-- Transportadora
-- Mensagem personalizada
-- Data de emissão
-- Nome do arquivo XML
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688)
+![SQLite](https://img.shields.io/badge/SQLite-3-lightgrey)
+![License](https://img.shields.io/badge/license-MIT-green)
 
----
-
-## 🚀 Como rodar
-
-1. Crie um diretório e extraia o `.zip`:
-
-   ```bash
-   unzip projeto-nfe-api.zip
-   cd projeto-nfe-api
-   ```
-
-2. Crie o ambiente virtual (opcional mas recomendado):
-
-   ```bash
-   python -m venv venv
-   source venv/bin/activate   # Linux/macOS
-   venv\Scripts\activate    # Windows
-   ```
-
-3. Instale as dependências:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Configure a pasta com os XMLs:
-   - No arquivo `app/config.py` altere a linha:
-
-     ```python
-     XML_FOLDER = "C:/notas"
-     ```
-
-   ou use variável de ambiente:
-
-   ```bash
-   export XML_FOLDER="/caminho/para/xmls"
-   ```
-
-5. Rode a API:
-
-   ```bash
-   uvicorn app.main:app --reload
-   ```
-
-6. Acesse a documentação:
-
-   [http://localhost:8000/docs](http://localhost:8000/docs)
+API desenvolvida em **FastAPI** com **SQLite (aiosqlite)** para processar, armazenar e consultar **Notas Fiscais Eletrônicas (NFe)** no formato **XML**.  
+Inclui um **front-end simples em HTML/CSS/JS** para upload dos arquivos.
 
 ---
 
-## 🔎 Exemplo de consulta
+## 🚀 Funcionalidades
+
+- 📂 Upload de múltiplos arquivos XML (input ou drag-and-drop).
+- ✅ Validação e tratamento de arquivos inválidos.
+- 🗄️ Inserção no banco com **controle de duplicidade** (`chave_acesso`).
+- 💾 Armazenamento dos seguintes dados no banco:
+  - `arquivo`
+  - `documento`
+  - `cliente`
+  - `transportadora`
+  - `mensagem`
+  - `data_emissao`
+  - `chave_acesso` (único)
+  - `numero_nota`
+  - `valor`
+  - `cnpj_emitente`
+  - `emitente`
+- 🔎 Consulta da nota **mais recente** por documento.
+- 🌐 Interface web em `/static/index.html`.
+
+---
+
+## 📂 Estrutura do Projeto
 
 ```
-GET http://localhost:8000/consulta/12345678901
+.
+├── app/
+│   ├── main.py          # Ponto de entrada FastAPI
+│   ├── database.py      # Conexão e funções do banco
+│   ├── utils.py         # Funções auxiliares de parse XML
+│   └── views/           # Front-end (HTML, CSS, JS)
+│       ├── index.html
+│       ├── style.css
+│       └── index.js
+├── notas.db             # Banco SQLite (gerado automaticamente)
+├── requirements.txt     # Dependências do projeto
+└── README.md
 ```
 
-Resposta:
+---
+
+## ⚙️ Instalação
+
+### 1. Clone o repositório
+
+```bash
+git clone https://github.com/seu-usuario/seu-repo.git
+cd seu-repo
+```
+
+### 2. Crie e ative um ambiente virtual
+
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+```
+
+### 3. Instale as dependências
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Inicialize o banco
+
+```bash
+python -m app.database
+```
+
+---
+
+## ▶️ Executando o servidor
+
+```bash
+uvicorn app.main:app --reload
+```
+
+O servidor ficará disponível em:
+
+- 🌐 API Base: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+- 📑 Documentação Swagger: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- 📘 Documentação ReDoc: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+- 🖥️ Front-end: [http://127.0.0.1:8000/static/index.html](http://127.0.0.1:8000/static/index.html)
+
+---
+
+## 📑 Endpoints Principais
+
+### 🔼 `POST /upload`
+
+Upload de múltiplos arquivos XML.
+
+**Resposta de exemplo:**
 
 ```json
 {
-  "arquivo": "NF456.xml",
-  "documento": "12345678901",
-  "cliente": "Fulano da Silva",
-  "transportadora": "Transportadora ABC LTDA",
-  "mensagem": "A Transportadora ABC entrará em contato para agendar a entrega.",
-  "data_emissao": "2023-08-15T15:30:00"
+  "sucesso": 5,
+  "duplicados": 2,
+  "falhas": 1,
+  "notas_inserir": ["123.xml", "456.xml"],
+  "erros": [
+    {
+      "arquivo": "lote1.xml",
+      "erro": "XML inválido",
+      "local": "parser"
+    }
+  ]
 }
 ```
+
+---
+
+### 🔍 `GET /consulta/{documento}`
+
+Consulta a nota **mais recente** de um documento.
+
+**Exemplo de resposta:**
+
+```json
+{
+  "arquivo": "123.xml",
+  "documento": "12345678000199",
+  "cliente": "Cliente Exemplo",
+  "transportadora": "Transportadora ABC",
+  "mensagem": "Pedido entregue",
+  "data_emissao": "2025-09-29T10:00:00",
+  "chave_acesso": "12345678901234567890123456789012345678901234",
+  "numero_nota": "4567",
+  "valor": 1500.75,
+  "cnpj_emitente": "11222333000144",
+  "emitente": "Empresa Emitente LTDA"
+}
+```
+
+---
+
+## 📌 Observações Importantes
+
+- O banco utiliza **WAL mode** para reduzir bloqueios de concorrência.
+- Se aparecer `database is locked`, reduza o `timeout` da conexão (ex.: `5s`).
+- Para volumes muito grandes, considere migrar para **PostgreSQL** ou **MySQL**.
+
+---
+
+## 🖼️ Screenshots
+
+> _(Adicione aqui prints do front-end em uso)_
+
+---
+
+## 📜 Licença
+
+Distribuído sob a licença MIT.  
+Sinta-se livre para usar, modificar e distribuir.
