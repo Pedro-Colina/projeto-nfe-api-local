@@ -159,7 +159,8 @@ document
     event.preventDefault();
     const documento = formataDocumentoApp(event.target.documento.value);
     try {
-      const response = await fetch(`/consulta/${documento}`);
+      const response = await fetch(`/consulta?documento=${documento}`);
+      console.log("response", response);
       if (!response.ok) {
         throw new Error("Nota não encontrada");
       }
@@ -175,10 +176,12 @@ document
 
       let mascara_doc = formataDocumentoViews(nota.documento);
       let mascara_doc_emit = formataDocumentoViews(nota.cnpj_emitente);
-      let valor = nota.valor.toLocaleString("pt-BR", {
-        currency: "BRL",
-        style: "currency",
-      });
+      let valor = Number.isInteger(nota.valor)
+        ? nota.valor.toLocaleString("pt-BR", {
+            currency: "BRL",
+            style: "currency",
+          })
+        : "Valor não definido";
 
       const html =
         "<h1>Nota Fiscal</h1>" +

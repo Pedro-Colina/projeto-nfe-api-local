@@ -30,7 +30,7 @@ async def home():
         content = await f.read()
     return HTMLResponse(content=content)
 
-@app.get("/consulta/{documento}", tags=["Consultas"])
+@app.get("/consulta", tags=["Consultas"])
 async def consulta_por_documento(documento: str):
     resultado = await buscar_nota_mais_recente(documento)
     if resultado:
