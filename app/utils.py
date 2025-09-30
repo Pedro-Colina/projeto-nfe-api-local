@@ -3,7 +3,6 @@ import xml.etree.ElementTree as ET
 import os
 from datetime import datetime
 from typing import Optional, List
-from .config import XML_FOLDER
 from .mensagens import get_mensagem
 from app.database import inserir_varias_notas, busca_duplicidade
 from fastapi import UploadFile, File

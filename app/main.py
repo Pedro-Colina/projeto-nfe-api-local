@@ -8,7 +8,6 @@ import traceback
 from contextlib import asynccontextmanager
 
 from app.utils import upload_lote
-from app.config import XML_FOLDER
 from app.database import buscar_nota_mais_recente, criar_tabela
 
 @asynccontextmanager

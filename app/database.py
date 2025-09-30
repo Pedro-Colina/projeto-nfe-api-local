@@ -1,115 +1,48 @@
-# app/database.py
-import aiosqlite
+from app.config import engine, async_session, Base
+from app.models import Nota
+from sqlalchemy.future import select
+from sqlalchemy.exc import IntegrityError
 import asyncio
-from pathlib import Path
-
-DB_PATH = Path(__file__).resolve().parent / "notas.db"
-DB_URL = str(DB_PATH)
 
 async def criar_tabela():
-    async with aiosqlite.connect(DB_URL, timeout=30) as db:
-        await db.execute("PRAGMA journal_mode=WAL;")
-        await db.execute("PRAGMA synchronous=NORMAL;")
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS notas (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                arquivo TEXT,
-                documento TEXT,
-                cliente TEXT,
-                transportadora TEXT,
-                mensagem TEXT,
-                data_emissao TEXT,
-                chave_acesso TEXT UNIQUE,
-                numero_nota TEXT,
-                valor REAL,
-                cnpj_emitente TEXT,
-                nome_emitente TEXT
-            )
-        """)
-        await db.commit()
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-import asyncio
-import aiosqlite
-
-async def inserir_varias_notas(notas: list[dict], tentativas=3):
-    if not notas:
-        return
-    sql = """
-        INSERT OR IGNORE INTO notas
-        (arquivo, documento, cliente, transportadora, mensagem, data_emissao, chave_acesso,
-        numero_nota, valor, cnpj_emitente, nome_emitente)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """
-    data = [
-        (
-            nota["arquivo"],
-            nota["documento"],
-            nota["cliente"],
-            nota["transportadora"],
-            nota["mensagem"],
-            nota["data_emissao"],
-            nota["chave_acesso"],
-            nota.get("numero_nota"),
-            nota.get("valor"),
-            nota.get("cnpj_emitente"),
-            nota.get("nome_emitente")
-        )
-        for nota in notas
-    ]
-
-    for tentativa in range(tentativas):
+async def inserir_varias_notas(notas: list[dict]):
+    async with async_session() as session:
+        objs = [Nota(**nota) for nota in notas]
+        session.add_all(objs)
         try:
-            async with aiosqlite.connect(DB_URL, timeout=5) as db:
-                await db.execute("PRAGMA journal_mode=WAL;")
-                await db.execute("PRAGMA synchronous=NORMAL;")
-                await db.executemany(sql, data)
-                await db.commit()
-            return  # sucesso
-        except aiosqlite.OperationalError as e:
-            if "locked" in str(e).lower() and tentativa < tentativas - 1:
-                await asyncio.sleep(0.2 * (tentativa + 1))  # backoff exponencial
-            else:
-                raise
-
+            await session.commit()
+        except IntegrityError:  # chave_acesso duplicada
+            await session.rollback()
 
 async def busca_duplicidade():
-    try:
-        async with aiosqlite.connect(DB_URL, timeout=5) as db:
-            cur = await db.execute("SELECT chave_acesso FROM notas")
-            rows = await cur.fetchall()
-            await cur.close()
-            return [r[0] for r in rows]
-    except aiosqlite.OperationalError as e:
-        if "no such table" in str(e).lower():
-            await criar_tabela()
-            return []
-        raise
+    async with async_session() as session:
+        result = await session.execute(select(Nota.chave_acesso))
+        return [row[0] for row in result.all()]
 
 async def buscar_nota_mais_recente(documento: str):
-    async with aiosqlite.connect(DB_URL, timeout=5) as db:
-        cur = await db.execute("""
-            SELECT arquivo, documento, cliente, transportadora, mensagem,
-                   data_emissao, chave_acesso, numero_nota, valor,
-                   cnpj_emitente, nome_emitente
-            FROM notas
-            WHERE documento = ?
-            ORDER BY datetime(data_emissao) DESC
-            LIMIT 1
-        """, (documento,))
-        row = await cur.fetchone()
-        await cur.close()
+    async with async_session() as session:
+        result = await session.execute(
+            select(Nota)
+            .where(Nota.documento == documento)
+            .order_by(Nota.data_emissao.desc())
+            .limit(1)
+        )
+        row = result.scalars().first()
         if row:
             return {
-                "arquivo": row[0],
-                "documento": row[1],
-                "cliente": row[2],
-                "transportadora": row[3],
-                "mensagem": row[4],
-                "data_emissao": row[5],
-                "chave_acesso": row[6],
-                "numero_nota": row[7],
-                "valor": row[8],
-                "cnpj_emitente": row[9],
-                "nome_emitente": row[10],
+                "arquivo": row.arquivo,
+                "documento": row.documento,
+                "cliente": row.cliente,
+                "transportadora": row.transportadora,
+                "mensagem": row.mensagem,
+                "data_emissao": row.data_emissao,
+                "chave_acesso": row.chave_acesso,
+                "numero_nota": row.numero_nota,
+                "valor": row.valor,
+                "cnpj_emitente": row.cnpj_emitente,
+                "nome_emitente": row.nome_emitente,
             }
     return None
