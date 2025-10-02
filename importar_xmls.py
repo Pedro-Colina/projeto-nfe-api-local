@@ -15,35 +15,28 @@ PROCESSED_FOLDER = os.path.join(ROOT_DIR, "processados")
 PROCESSED_FOLDER = "./processados"
 
 def enviar_xmls():
-    if not os.path.exists(PROCESSED_FOLDER):
-        os.makedirs(PROCESSED_FOLDER)
+    os.makedirs(PROCESSED_FOLDER, exist_ok=True)
 
-    files = []
-    xml_paths = []
-    
     for filename in os.listdir(XML_FOLDER):
         if filename.endswith(".xml"):
             filepath = os.path.join(XML_FOLDER, filename)
-            xml_paths.append(filepath)
-            files.append(('files', (filename, open(filepath, 'rb'), 'application/xml')))
-    
-    if not files:
-        print("Nenhum XML encontrado para envio.")
-        return
-    
-    try:
-        response = requests.post(API_URL, files=files)
-        if response.status_code == 200:
-            print("✅ XMLs enviados com sucesso:", response.json())
-            # Mover os arquivos para a pasta processados
-            for filepath in xml_paths:
-                dest_path = os.path.join(PROCESSED_FOLDER, os.path.basename(filepath))
-                shutil.move(filepath, dest_path)
-            print(f"✅ {len(xml_paths)} arquivos movidos para {PROCESSED_FOLDER}")
-        else:
-            print("❌ Erro ao enviar:", response.status_code, response.text)
-    except Exception as e:
-        print("❌ Erro de conexão:", e)
+            processed_path = os.path.join(PROCESSED_FOLDER, filename)
+
+            try:
+                with open(filepath, "rb") as f:
+                    file_content = f.read()  # lê em memória
+
+                files = {"file": (filename, file_content, "application/xml")}
+                response = requests.post(API_URL, files=files)
+
+                if response.status_code == 200:
+                    print(f"✅ {filename} enviado com sucesso!")
+                    shutil.move(filepath, processed_path)  # só move depois de fechar
+                else:
+                    print(f"❌ Erro ao enviar {filename}: {response.text}")
+
+            except Exception as e:
+                print(f"⚠️ Erro ao processar {filename}: {e}")
 
 if __name__ == "__main__":
     enviar_xmls()
