@@ -5,8 +5,11 @@ import requests
 # URL da sua API no Render
 API_URL = "https://projeto-nfe-api-local.onrender.com/notas/upload-lote"
 
-# Pasta local com os XMLs a enviar
-XML_FOLDER = "./xmls"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # pasta do script (/projeto)
+ROOT_DIR = os.path.dirname(BASE_DIR)  # sobe 1 nível (/projeto-nfe-api)
+
+XML_FOLDER = os.path.join(ROOT_DIR, "xmls")
+PROCESSED_FOLDER = os.path.join(ROOT_DIR, "processados")
 
 # Pasta onde serão movidos os XMLs já enviados
 PROCESSED_FOLDER = "./processados"
