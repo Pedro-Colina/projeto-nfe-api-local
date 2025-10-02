@@ -220,6 +220,9 @@ document
         "</p>" +
         "<p><strong>Valor NF: </strong> " +
         valor +
+        "</p>" +
+        "<p><strong>Mensagem: </strong> " +
+        nota.mensagem +
         "</p>";
 
       document.getElementById("consulta-response").innerHTML = html;
