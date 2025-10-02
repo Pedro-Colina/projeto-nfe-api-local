@@ -1,3 +1,4 @@
 .env
 .env.local
-notas.db
+*.db
+*.sqbpro

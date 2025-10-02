@@ -1,5 +1,5 @@
 # app/main.py
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from typing import List
@@ -43,7 +43,7 @@ async def consulta_por_documento(documento: str):
     resultado = await buscar_nota_mais_recente(documento)
     if resultado:
         return resultado
-    return {"message": "Nenhuma nota encontrada para esse CPF/CNPJ"}
+    raise HTTPException(status_code=404, detail="Nota não encontrada para o documento informado.")
 
 @app.post("/notas/upload-lote", tags=["Importar XMLs"])
 async def upload_lote_post(files: List[UploadFile] = File(...)):

@@ -165,6 +165,15 @@ document
         throw new Error("Nota não encontrada");
       }
       const nota = await response.json();
+
+      let html = "";
+
+      if (nota.chave_acesso === undefined) {
+        html = "<p>Nenhuma nota encontrada para este documento.</p>";
+        document.getElementById("consulta-response").innerHTML = html;
+        return;
+      }
+
       let data_emissao = new Date(nota.data_emissao).toLocaleString("pt-BR", {
         timeZone: "America/Sao_Paulo",
         day: "numeric",
@@ -183,7 +192,7 @@ document
           })
         : "Valor não definido";
 
-      const html =
+      html =
         "<h1>Nota Fiscal</h1>" +
         "<p><strong>Chave de Acesso: </strong> " +
         nota.chave_acesso +
