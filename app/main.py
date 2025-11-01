@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from typing import List
 import aiofiles
+from app.config import Base
 from app.utils import upload_lote
 from app.database import buscar_nota_mais_recente, criar_tabela
 
@@ -14,7 +15,13 @@ app = FastAPI(
 )
 
 # Cria tabela ao iniciar
-criar_tabela()
+@app.get("/init-db")
+def init_db():
+    try:
+        Base.metadata.create_all(bind=engine)
+        return {"message": "Tabelas criadas com sucesso!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 app.mount("/static", StaticFiles(directory="views"), name="static")
 
