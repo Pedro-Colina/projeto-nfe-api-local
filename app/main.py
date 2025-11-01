@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from typing import List
 import aiofiles
-from app.config import Base
+from app.config import Base, engine
 from app.utils import upload_lote
 from app.database import buscar_nota_mais_recente, criar_tabela
 
