@@ -6,7 +6,9 @@ from typing import List
 import aiofiles
 from app.config import Base, engine
 from app.utils import upload_lote
-from app.database import buscar_nota_mais_recente, criar_tabela
+from app.database import buscar_nota_mais_recente
+from app.schemas import NotaSchema
+from typing import List
 
 app = FastAPI(
     title="API de Consulta de NF-e",
@@ -31,7 +33,7 @@ async def home():
         content = await f.read()
     return HTMLResponse(content=content)
 
-@app.get("/consulta", tags=["Consultas"])
+@app.get("/consulta", response_model=List[NotaSchema],tags=["Consultas"])
 async def consulta_por_documento(documento: str):
     resultado = await asyncio.to_thread(buscar_nota_mais_recente, documento)
     if resultado:

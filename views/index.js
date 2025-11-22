@@ -100,8 +100,8 @@ function formataDocumentoApp(doc) {
   return doc;
 }
 
-function adicionaAccordeon() {
-  const accordions = document.getElementsByClassName("accordion");
+function adicionaAccordeon(className = "") {
+  const accordions = document.querySelectorAll(".accordion" + className);
   for (const accordion of accordions) {
     accordion.addEventListener("click", function () {
       this.classList.toggle("active");
@@ -120,7 +120,7 @@ function renderArquivosEnviados(arquivos) {
   html += `<p>Total de arquivos com erro: <strong>${arquivos.falhas}</strong></p>`;
 
   if (arquivos.erros && arquivos.erros.length > 0) {
-    html += `<button class="accordion">Detalhes dos erros: <span class="icon" aria-hidden="true"></span></button>`;
+    html += `<button class="accordion upload">Detalhes dos erros: <span class="icon" aria-hidden="true"></span></button>`;
     html += `<div class="panel display-none">`;
     html += `<ul>`;
     for (let erro of arquivos.erros) {
@@ -131,7 +131,7 @@ function renderArquivosEnviados(arquivos) {
   }
 
   if (arquivos.notas_inserir.length > 0) {
-    html += `<button class="accordion" aria-expanded="false">Amostra notas inseridas( ${arquivos.notas_inserir.length} ultimas )<span class="icon" aria-hidden="true"></span></button>`;
+    html += `<button class="accordion upload" aria-expanded="false">Amostra notas inseridas( ${arquivos.notas_inserir.length} ultimas )<span class="icon" aria-hidden="true"></span></button>`;
     html += `<div class="panel display-none">`;
     html += `<pre>${JSON.stringify(arquivos.notas_inserir, null, 2)}</pre>`;
     html += `</div>`;
@@ -139,34 +139,8 @@ function renderArquivosEnviados(arquivos) {
   return html;
 }
 
-function renderArquivoEncontrado(arquivo) {
-  let html = "";
-
-  if (arquivo.chave_acesso === undefined) {
-    html = "<p>Nenhuma nota encontrada para este documento.</p>";
-    document.getElementById("consulta-response").innerHTML = html;
-    return;
-  }
-
-  let data_emissao = new Date(arquivo.data_emissao).toLocaleString("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    day: "numeric",
-    month: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  let mascara_doc = formataDocumentoViews(arquivo.documento);
-  let mascara_doc_emit = formataDocumentoViews(arquivo.cnpj_emitente);
-  let valor = Number.isInteger(arquivo.valor)
-    ? arquivo.valor.toLocaleString("pt-BR", {
-        currency: "BRL",
-        style: "currency",
-      })
-    : "Valor não definido";
-
-  html =
+function textoNotaUnica(arquivo) {
+  return (
     "<h1>Nota Fiscal</h1>" +
     "<p><strong>Chave de Acesso: </strong> " +
     arquivo.chave_acesso +
@@ -178,27 +152,95 @@ function renderArquivoEncontrado(arquivo) {
     arquivo.nome_emitente +
     "</p>" +
     "<p><strong>CNPJ emitente: </strong> " +
-    mascara_doc_emit +
+    arquivo.cnpj_emitente +
     "</p>" +
     "<p><strong>Destinatário: </strong> " +
     arquivo.cliente +
     "</p>" +
     "<p><strong>Documento cliente: </strong> " +
-    mascara_doc +
+    arquivo.documento +
     "</p>" +
     "<p><strong>Data de Emissão: </strong> " +
-    data_emissao +
+    arquivo.data_emissao +
     "</p>" +
     "<p><strong>Transportadora: </strong> " +
     arquivo.transportadora +
     "</p>" +
     "<p><strong>Valor NF: </strong> " +
-    valor +
+    arquivo.valor +
     "</p>" +
     "<p><strong>Mensagem: </strong> " +
     arquivo.mensagem +
-    "</p>";
+    "</p>"
+  );
+}
 
+function textoNotasMultiplas(arquivo) {
+  return (
+    `<button class="accordion find">Nota nº ${arquivo.numero_nota} <span class="icon" aria-hidden="true"></span></button>` +
+    `<div class="panel display-none">` +
+    `<h2>Detalhes da Nota: </h2>` +
+    `<p><strong>Chave de Acesso: </strong> ${arquivo.chave_acesso}</p>` +
+    `<p><strong>Numero da NF: </strong> ${arquivo.numero_nota}</p>` +
+    `<p><strong>Empresa emitente: </strong> ${arquivo.nome_emitente}</p>` +
+    `<p><strong>CNPJ emitente: </strong> ${arquivo.cnpj_emitente}</p>` +
+    `<p><strong>Destinatário: </strong> ${arquivo.cliente}</p>` +
+    `<p><strong>Documento cliente: </strong> ${arquivo.documento}</p>` +
+    `<p><strong>Data de Emissão: </strong> ${arquivo.data_emissao}</p>` +
+    `<p><strong>Transportadora: </strong> ${arquivo.transportadora}</p>` +
+    `<p><strong>Valor NF: </strong> ${arquivo.valor}</p>` +
+    `<p><strong>Mensagem: </strong> ${arquivo.mensagem}</p>` +
+    `</div>`
+  );
+}
+
+function formataDadosNotasEncontradas(arquivo) {
+  let data_emissao = new Date(arquivo.data_emissao).toLocaleString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  let valor = Number.isInteger(arquivo.valor)
+    ? arquivo.valor.toLocaleString("pt-BR", {
+        currency: "BRL",
+        style: "currency",
+      })
+    : "Valor não definido";
+
+  arquivo.cnpj_emitente = formataDocumentoViews(arquivo.cnpj_emitente);
+  arquivo.documento = formataDocumentoViews(arquivo.documento);
+  arquivo.data_emissao = data_emissao;
+  arquivo.valor = valor;
+
+  return arquivo;
+}
+
+function renderTextoArquivoEncontrado(arquivo = {}, multiplasNotas = false) {
+  arquivo = formataDadosNotasEncontradas(arquivo);
+  if (!multiplasNotas) {
+    return textoNotaUnica(arquivo);
+  }
+  return textoNotasMultiplas(arquivo);
+}
+
+function renderArquivoEncontrado(arquivos) {
+  let html = "";
+  if (arquivos.length <= 0) {
+    html = "<p>Nenhuma nota encontrada para este documento.</p>";
+    document.getElementById("consulta-response").innerHTML = html;
+    return;
+  }
+  html +=
+    arquivos.length > 1
+      ? `<h1>Notas Fiscais Encontradas: ${arquivos.length}</h1>`
+      : "";
+  for (const arquivo of arquivos) {
+    html += renderTextoArquivoEncontrado(arquivo, arquivos.length > 1);
+  }
   return html;
 }
 
@@ -255,7 +297,7 @@ document
       escondeHTML(loading);
       document.getElementById("response").innerHTML =
         renderArquivosEnviados(result);
-      adicionaAccordeon();
+      adicionaAccordeon(".upload");
     } catch (error) {
       escondeHTML(loading);
       document.getElementById("response").innerText =
@@ -271,7 +313,6 @@ document
     const documento = formataDocumentoApp(event.target.documento.value);
     try {
       const response = await fetch(`/consulta?documento=${documento}`);
-      console.log("response", response);
       if (!response.ok) {
         throw new Error("Nota não encontrada");
       }
@@ -279,6 +320,7 @@ document
       escondeHTML(loading);
       document.getElementById("consulta-response").innerHTML =
         renderArquivoEncontrado(nota);
+      adicionaAccordeon(".find");
     } catch (error) {
       escondeHTML(loading);
       document.getElementById("consulta-response").innerText =

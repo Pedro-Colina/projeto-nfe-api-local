@@ -35,22 +35,10 @@ def buscar_nota_mais_recente(documento: str):
             session.query(Nota)
             .filter(Nota.documento == documento)
             .order_by(Nota.data_emissao.desc())
-            .first()
+            .all()
         )
         if nota:
-            return {
-                "arquivo": nota.arquivo,
-                "documento": nota.documento,
-                "cliente": nota.cliente,
-                "transportadora": nota.transportadora,
-                "mensagem": nota.mensagem,
-                "data_emissao": nota.data_emissao,
-                "chave_acesso": nota.chave_acesso,
-                "numero_nota": nota.numero_nota,
-                "valor": nota.valor,
-                "cnpj_emitente": nota.cnpj_emitente,
-                "nome_emitente": nota.nome_emitente,
-            }
+            return nota
         return None
     finally:
         session.close()
