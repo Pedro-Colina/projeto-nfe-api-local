@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>API de Notas Fiscais</title>
-    <link rel="stylesheet" href="/static/style.css?v=1.1" />
+    <link rel="stylesheet" href="/static/css/style.css?v=1.1" />
   </head>
   <body>
     <header>
@@ -39,7 +39,10 @@
             <span>OU</span>
           </div>
           <button type="button" id="select-files">Selecione arquivos</button>
-          <p id="contador-arquivos"></p>
+          <div class="display-none" id="file-cont">
+            <p id="contador-arquivos"></p>
+            <button type="button" id="clean-upload">limpar arquivos</button>
+          </div>
           <ul id="file-list"></ul>
           <button type="submit">Enviar</button>
         </form>
@@ -47,6 +50,6 @@
       </section>
     </div>
 
-    <script src="/static/index.js"></script>
+    <script type="module" src="/static/js/index.js"></script>
   </body>
 </html>
